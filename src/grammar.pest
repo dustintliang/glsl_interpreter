@@ -14,7 +14,7 @@ varying_decl = {"varying" ~ type_name ~ ident ~ ";"}
 // The main function body
 main_fn = {"void" ~ "main" ~ "(" ~ ")" ~ "{" ~ stmt* ~ "}"}
 
-// compound_assign_stmt must come first — otherwise color.g += ... would partially match assign_stmt
+// compound_assign_stmt must come first
 stmt = {compound_assign_stmt | assign_stmt | decl_stmt}
 assign_stmt = {lvalue ~ "=" ~ expr ~ ";"}
 decl_stmt = {type_name ~ ident ~ "=" ~ expr ~ ";"}
@@ -22,7 +22,7 @@ compound_assign_stmt = {ident ~ "." ~ swizzle ~ "+=" ~ expr ~ ";"}
 
 lvalue = {ident}
 
-// Gator type annotations (e.g. Color3<RGB>, Cart3.Point<Clip>) — parsed and discarded at runtime
+// Gator type annotations are parsed and discarded at runtime
 // gator_type must come before glsl_type so Color3<RGB> doesn't partially match as ident "Color3"
 gator_type = {ident ~ ("." ~ ident)? ~ "<" ~ ident ~ ("," ~ ident)* ~ ">"}
 glsl_type = {"float" | "vec2" | "vec3" | "vec4" | "mat4" | "mat3"}
