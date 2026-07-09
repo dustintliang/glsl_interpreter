@@ -40,6 +40,15 @@ fn main() {
                 match floats.len() {
                     3 => { env.insert(k.clone(), interpreter::Value::Vec3([floats[0], floats[1], floats[2]])); }
                     4 => { env.insert(k.clone(), interpreter::Value::Vec4([floats[0], floats[1], floats[2], floats[3]])); }
+                    16 => {
+                        let mut m = [[0f32; 4]; 4];
+                        for i in 0..4 {
+                            for j in 0..4 {
+                                m[i][j] = floats[i*4 + j];
+                            }
+                        }
+                        env.insert(k.clone(), interpreter::Value::Mat4(m));
+                    }
                     _ => {}
                 }
             }
