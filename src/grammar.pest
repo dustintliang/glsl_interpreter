@@ -1,0 +1,51 @@
+// Pest silently skips whitespace and // comments between every rule
+WHITESPACE = _{" " | "\t" | "\n" | "\r"}
+COMMENT = _{"//" ~ (!"\n" ~ ANY)*}
+
+// A valid file
+program = {SOI ~ decl* ~ main_fn ~ EOI}
+
+// Top-level declarations before main
+decl = {precision_decl | uniform_decl | varying_decl}
+precision_decl = {"precision" ~ ident ~ ident ~ ";"}
+uniform_decl = {"uniform" ~ type_name ~ ident ~ ";"}
+varying_decl = {"varying" ~ type_name ~ ident ~ ";"}
+
+// The main function body
+main_fn = {"void" ~ "main" ~ "(" ~ ")" ~ "{" ~ stmt* ~ "}"}
+
+// compound_assign_stmt must come first — otherwise color.g += ... would partially match assign_stmt
+stmt = {compound_assign_stmt | assign_stmt | decl_stmt}
+assign_stmt = {lvalue ~ "=" ~ expr ~ ";"}
+decl_stmt = {type_name ~ ident ~ "=" ~ expr ~ ";"}
+compound_assign_stmt = {ident ~ "." ~ swizzle ~ "+=" ~ expr ~ ";"}
+
+lvalue = {ident}
+
+// Gator type annotations (e.g. Color3<RGB>, Cart3.Point<Clip>) — parsed and discarded at runtime
+// gator_type must come before glsl_type so Color3<RGB> doesn't partially match as ident "Color3"
+gator_type = {ident ~ ("." ~ ident)? ~ "<" ~ ident ~ ("," ~ ident)* ~ ">"}
+glsl_type = {"float" | "vec2" | "vec3" | "vec4" | "mat4" | "mat3"}
+type_name = {gator_type | glsl_type}
+
+// add_op/mul_op are named rules so they appear as nodes in the parse tree
+// without this, "+" would be invisible to the AST builder
+add_op = {"+"|"-"}
+mul_op = {"*"|"/"}
+
+expr = {add_expr}
+add_expr = {mul_expr ~ (add_op ~ mul_expr)*}
+mul_expr = {unary ~ (mul_op ~ unary)*}
+unary = {"-" ~ primary | primary}
+// swizzle_expr before ident so v_Position.x doesn't match as just an ident
+primary = {call_expr | swizzle_expr | float_lit | ident}
+
+call_expr = {ident ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")"}
+swizzle_expr = {ident ~ "." ~ swizzle}
+swizzle = @{ASCII_ALPHA+}
+
+// A number
+float_lit = {ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)?}
+
+// @ means atomic — treat the whole match as one token, no whitespace splitting inside
+ident = @{ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")*}
