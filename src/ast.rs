@@ -6,7 +6,7 @@ use crate::Rule;
 pub enum Expr {
     Float(f32),
     Ident(String),
-    Swizzle {name: String, field: String}, // e.g. v_Position.x
+    Swizzle {name: String, field: String},
     BinOp {op: char, left: Box<Expr>, right: Box<Expr>},
     Call {name: String, args: Vec<Expr>}
 }
@@ -62,8 +62,10 @@ fn parse_stmt(pair: pest::iterators::Pair<Rule>) -> Stmt {
         }
         Rule::compound_assign_stmt => {
             let mut parts = inner.into_inner();
-            let name = parts.next().unwrap().as_str().to_string();  // ident
-            let field = parts.next().unwrap().as_str().to_string(); // swizzle
+            // Ident
+            let name = parts.next().unwrap().as_str().to_string();
+            // Swizzle
+            let field = parts.next().unwrap().as_str().to_string();
             let expr = parse_expr(parts.next().unwrap());
             Stmt::SwizzleAssign {name, field, expr}
         }
@@ -101,7 +103,7 @@ fn parse_expr(pair: pest::iterators::Pair<Rule>) -> Expr {
         Rule::unary => {
             let mut inner = pair.into_inner();
             let first = inner.next().unwrap();
-            // If the first token is "-", negate by multiplying by -1
+            // If first token is "-", negate by multiplying by -1
             if first.as_str() == "-" {
                 let operand = parse_expr(inner.next().unwrap());
                 Expr::BinOp {
