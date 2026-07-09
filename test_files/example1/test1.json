@@ -1,0 +1,4 @@
+{
+    "u_RedShift" : 1.0,
+    "expected_output" : [1.5, 0.0, 1.0, 1.0]
+}
