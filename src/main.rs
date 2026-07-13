@@ -58,7 +58,13 @@ fn main() {
     // Parse the .frag file into a raw parse tree, then convert to AST, then run it
     let pairs = GlslParser::parse(Rule::program, &frag_src).expect("parse error");
     let program = ast::parse_program(pairs);
-    interpreter::run(&program, &mut env);
+    let mut type_env: HashMap<String, String> = HashMap::new();
+    interpreter::run(&program, &mut env, &mut type_env);
+
+    // Print each variable's declared type
+    for (name, ty) in &type_env {
+        eprintln!("{name}: {ty}");
+    }
 
     // gl_FragColor is what the shader outputs — printed as [r, g, b, a]
     match env.get("gl_FragColor") {

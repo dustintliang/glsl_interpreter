@@ -15,7 +15,7 @@ pub enum Expr {
 #[derive(Debug)]
 pub enum Stmt {
     Assign {name: String, expr: Expr},
-    Decl {name: String, expr: Expr},
+    Decl {ty: String, name: String, expr: Expr},
     SwizzleAssign {name: String, field: String, expr: Expr} // e.g. color.g += expr
 }
 
@@ -54,11 +54,10 @@ fn parse_stmt(pair: pest::iterators::Pair<Rule>) -> Stmt {
         }
         Rule::decl_stmt => {
             let mut parts = inner.into_inner();
-            // Skip type_name
-            parts.next();
+            let ty = parts.next().unwrap().as_str().to_string();
             let name = parts.next().unwrap().as_str().to_string();
             let expr = parse_expr(parts.next().unwrap());
-            Stmt::Decl {name, expr}
+            Stmt::Decl {ty, name, expr}
         }
         Rule::compound_assign_stmt => {
             let mut parts = inner.into_inner();

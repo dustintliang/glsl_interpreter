@@ -11,13 +11,18 @@ pub enum Value {
 }
 
 // Execute every statement in main() in order, storing results back into env
-pub fn run(program: &Program, env: &mut HashMap<String, Value>) {
+pub fn run(program: &Program, env: &mut HashMap<String, Value>, type_env: &mut HashMap<String, String>) {
     for stmt in &program.stmts {
         match stmt {
-            // Assign and Decl both evaluate the right side and store it
-            Stmt::Assign {name, expr} | Stmt::Decl {name, expr} => {
+            Stmt::Assign {name, expr} => {
                 let val = eval(expr, env);
                 env.insert(name.clone(), val);
+            }
+            // Record the declared type alongside the runtime value
+            Stmt::Decl {ty, name, expr} => {
+                let val = eval(expr, env);
+                env.insert(name.clone(), val);
+                type_env.insert(name.clone(), ty.clone());
             }
             // Read-modify-write a single component in place
             Stmt::SwizzleAssign {name, field, expr} => {
