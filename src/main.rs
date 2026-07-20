@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 mod ast;
 mod interpreter;
+mod emitter;
 
 // Pest reads grammar.pest at compile time and generates the parser code
 #[derive(Parser)]
@@ -11,8 +12,22 @@ mod interpreter;
 struct GlslParser;
 
 fn main() {
-    // Expect: glsl_interpreter <shader.frag> <inputs.json>
     let args: Vec<String> = std::env::args().collect();
+
+    if args.get(1).map(|s| s.as_str()) == Some("emit") {
+        if args.len() != 4 {
+            eprintln!("Usage: glsl_interpreter emit <shader.frag> <output.glsl>");
+            std::process::exit(1);
+        }
+        let frag_src = std::fs::read_to_string(&args[2]).expect("could not read .frag file");
+        let pairs = GlslParser::parse(Rule::program, &frag_src).expect("parse error");
+        let program = ast::parse_program(pairs);
+        let glsl = emitter::emit(&program);
+        std::fs::write(&args[3], &glsl).expect("could not write output file");
+        println!("wrote {}", args[3]);
+        return;
+    }
+
     if args.len() != 3 {
         eprintln!("Usage: glsl_interpreter <shader.frag> <inputs.json>");
         std::process::exit(1);
