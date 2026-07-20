@@ -1,6 +1,14 @@
 use pest::iterators::Pairs;
 use crate::Rule;
 
+// A top-level declaration outside main()
+#[derive(Debug)]
+pub enum TopDecl {
+    Precision {qual: String, ty: String},
+    Uniform {ty: String, name: String},
+    Varying {ty: String, name: String}
+}
+
 // Every kind of value-producing thing in the shader
 #[derive(Debug)]
 pub enum Expr {
@@ -19,27 +27,59 @@ pub enum Stmt {
     SwizzleAssign {name: String, field: String, expr: Expr} // e.g. color.g += expr
 }
 
-// The whole program — the statements inside main(), everything else is discarded
+// The whole program
 #[derive(Debug)]
 pub struct Program {
+    pub decls: Vec<TopDecl>,
     pub stmts: Vec<Stmt>
 }
 
-// Walk Pest's raw output and pull out the statements from main()
+// Walk Pest's raw output and collect top-level decls and statements from main()
 pub fn parse_program(mut pairs: Pairs<Rule>) -> Program {
+    let mut decls = Vec::new();
     let mut stmts = Vec::new();
-    // Pairs contains one top-level 'program' node, so go into its children to find main_fn
+    // Pairs contains one top-level 'program' node, so go into its children
     let program = pairs.next().unwrap();
     for pair in program.into_inner() {
-        if pair.as_rule() == Rule::main_fn {
-            for inner in pair.into_inner() {
-                if inner.as_rule() == Rule::stmt {
-                    stmts.push(parse_stmt(inner));
+        match pair.as_rule() {
+            Rule::decl => decls.push(parse_top_decl(pair)),
+            Rule::main_fn => {
+                for inner in pair.into_inner() {
+                    if inner.as_rule() == Rule::stmt {
+                        stmts.push(parse_stmt(inner));
+                    }
                 }
             }
+            _ => {}
         }
     }
-    Program {stmts}
+    Program {decls, stmts}
+}
+
+// A decl node wraps one of precision_decl, uniform_decl, or varying_decl
+fn parse_top_decl(pair: pest::iterators::Pair<Rule>) -> TopDecl {
+    let inner = pair.into_inner().next().unwrap();
+    match inner.as_rule() {
+        Rule::precision_decl => {
+            let mut parts = inner.into_inner();
+            let qual = parts.next().unwrap().as_str().to_string();
+            let ty = parts.next().unwrap().as_str().to_string();
+            TopDecl::Precision {qual, ty}
+        }
+        Rule::uniform_decl => {
+            let mut parts = inner.into_inner();
+            let ty = parts.next().unwrap().as_str().to_string();
+            let name = parts.next().unwrap().as_str().to_string();
+            TopDecl::Uniform {ty, name}
+        }
+        Rule::varying_decl => {
+            let mut parts = inner.into_inner();
+            let ty = parts.next().unwrap().as_str().to_string();
+            let name = parts.next().unwrap().as_str().to_string();
+            TopDecl::Varying {ty, name}
+        }
+        _ => unreachable!()
+    }
 }
 
 // A stmt node always contains either an assign_stmt, decl_stmt, or compound_assign_stmt
