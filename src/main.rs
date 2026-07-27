@@ -5,6 +5,8 @@ use std::collections::HashMap;
 mod ast;
 mod interpreter;
 mod emitter;
+mod types;
+mod typechecker;
 
 // Pest reads grammar.pest at compile time and generates the parser code
 #[derive(Parser)]
@@ -13,6 +15,26 @@ struct GlslParser;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+
+    if args.get(1).map(|s| s.as_str()) == Some("typecheck") {
+        if args.len() != 3 {
+            eprintln!("Usage: glsl_interpreter typecheck <shader.frag>");
+            std::process::exit(1);
+        }
+        let frag_src = std::fs::read_to_string(&args[2]).expect("could not read .frag file");
+        let pairs = GlslParser::parse(Rule::program, &frag_src).expect("parse error");
+        let program = ast::parse_program(pairs);
+        let errors = typechecker::check(&program);
+        if errors.is_empty() {
+            println!("OK");
+        } else {
+            for e in &errors {
+                eprintln!("error: {}", e.message);
+            }
+            std::process::exit(1);
+        }
+        return;
+    }
 
     if args.get(1).map(|s| s.as_str()) == Some("emit") {
         if args.len() != 4 {
