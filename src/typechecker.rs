@@ -12,7 +12,8 @@ pub fn check(program: &Program) -> Vec<TypeError> {
     let mut errors = Vec::new();
     let mut type_map: HashMap<String, GatorType> = HashMap::new();
 
-    type_map.insert("gl_FragColor".to_string(), GatorType::Plain("vec4".to_string()));
+    // gl_FragColor is a GLSL built-in output; Unknown means assignments are not Gator-checked
+    type_map.insert("gl_FragColor".to_string(), GatorType::Unknown);
 
     for decl in &program.decls {
         match decl {
@@ -53,7 +54,7 @@ fn infer(expr: &Expr, type_map: &HashMap<String, GatorType>, errors: &mut Vec<Ty
         Expr::Float(_) => GatorType::Plain("float".to_string()),
         Expr::Ident(name) => type_map.get(name).cloned().unwrap_or(GatorType::Unknown),
         Expr::Swizzle {..} => GatorType::Plain("float".to_string()),
-        Expr::Call {..} => GatorType::Unknown,
+        Expr::Call {name, args} => infer_call(name, args, type_map, errors),
         Expr::BinOp {op, left, right} => {
             let lt = infer(left, type_map, errors);
             let rt = infer(right, type_map, errors);
@@ -63,6 +64,25 @@ fn infer(expr: &Expr, type_map: &HashMap<String, GatorType>, errors: &mut Vec<Ty
                 _ => GatorType::Unknown
             }
         }
+    }
+}
+
+fn infer_call(name: &str, args: &[Expr], type_map: &HashMap<String, GatorType>, _errors: &mut Vec<TypeError>) -> GatorType {
+    // Evaluate args for type info: errors are discarded so pre-existing annotation issues inside call arguments don't surface as new false positives
+    let mut sink = Vec::new();
+    let arg_types: Vec<GatorType> = args.iter().map(|a| infer(a, type_map, &mut sink)).collect();
+    match name {
+        "dot" | "length" | "distance" => GatorType::Plain("float".to_string()),
+        "max" | "min" | "pow" | "clamp" | "mix" | "smoothstep" | "step" => GatorType::Plain("float".to_string()),
+        // Frame-preserving: return same scheme+frames as first arg, subtype not tracked
+        "normalize" | "reflect" | "faceforward" => {
+            match arg_types.first() {
+                Some(GatorType::Gator {scheme, frames, ..}) =>
+                    GatorType::Gator {scheme: scheme.clone(), subtype: None, frames: frames.clone()},
+                _ => GatorType::Unknown
+            }
+        }
+        _ => GatorType::Unknown
     }
 }
 
@@ -126,6 +146,9 @@ fn check_compatible(declared: &GatorType, inferred: &GatorType, name: &str, erro
         // Any plain type is assignable to any plain variable since GLSL handles that check
         (GatorType::Plain(_), GatorType::Plain(_)) => {}
         (a, b) if a == b => {}
+        // Normalize/reflect return Gator with no subtype — check scheme+frames only
+        (GatorType::Gator {scheme: ds, frames: df, ..}, GatorType::Gator {scheme: is, subtype: None, frames: inf})
+            if ds == is && df == inf => {}
         _ => {
             errors.push(TypeError {message: format!("type mismatch for '{name}': declared {:?} but expression has type {:?}", declared, inferred)});
         }

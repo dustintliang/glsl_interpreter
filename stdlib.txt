@@ -1,0 +1,19 @@
+# GLSL standard library type signatures (Gator-style)
+# T denotes any Gator type; F denotes a coordinate frame
+
+# Returns float
+dot       : T<F>, T<F> -> float
+length    : T<F> -> float
+distance  : T<F>, T<F> -> float
+max       : float, float -> float
+min       : float, float -> float
+pow       : float, float -> float
+clamp     : float, float, float -> float
+mix       : float, float, float -> float
+smoothstep: float, float, float -> float
+step      : float, float -> float
+
+# Frame-preserving — subtype is not tracked (normalize of a Point is still in the same frame)
+normalize   : T<F> -> T<F>
+reflect     : T<F>, T<F> -> T<F>
+faceforward : T<F>, T<F>, T<F> -> T<F>
