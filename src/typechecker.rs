@@ -12,6 +12,8 @@ pub fn check(program: &Program) -> Vec<TypeError> {
     let mut errors = Vec::new();
     let mut type_map: HashMap<String, GatorType> = HashMap::new();
 
+    type_map.insert("gl_FragColor".to_string(), GatorType::Plain("vec4".to_string()));
+
     for decl in &program.decls {
         match decl {
             TopDecl::Uniform {ty, name} => { type_map.insert(name.clone(), parse_gator_type(ty)); }
