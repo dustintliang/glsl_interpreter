@@ -82,8 +82,8 @@ fn check_mul(lt: &GatorType, rt: &GatorType, errors: &mut Vec<TypeError>) -> Gat
         // float * Gator -> Gator (scalar multiplication, frame preserved)
         (GatorType::Plain(s), GatorType::Gator {..}) if s == "float" => rt.clone(),
         (GatorType::Gator {..}, GatorType::Plain(s)) if s == "float" => lt.clone(),
-        // Plain * Plain - both unannotated -> Ok
-        (GatorType::Plain(_), GatorType::Plain(_)) => GatorType::Unknown,
+        // Plain * Plain - both unannotated, produce unannotated result
+        (GatorType::Plain(_), GatorType::Plain(_)) => GatorType::Plain("unannotated".to_string()),
         // Gator * Gator -> apply frame rules
         (GatorType::Gator {frames: lf, ..}, GatorType::Gator {frames: rf, ..}) => {
             if lf.len() == 2 && rf.len() == 1 {
@@ -121,6 +121,8 @@ fn check_mul(lt: &GatorType, rt: &GatorType, errors: &mut Vec<TypeError>) -> Gat
 fn check_compatible(declared: &GatorType, inferred: &GatorType, name: &str, errors: &mut Vec<TypeError>) {
     match (declared, inferred) {
         (_, GatorType::Unknown) | (GatorType::Unknown, _) => {}
+        // Any plain type is assignable to any plain variable since GLSL handles that check
+        (GatorType::Plain(_), GatorType::Plain(_)) => {}
         (a, b) if a == b => {}
         _ => {
             errors.push(TypeError {message: format!("type mismatch for '{name}': declared {:?} but expression has type {:?}", declared, inferred)});
